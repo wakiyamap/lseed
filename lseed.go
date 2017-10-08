@@ -66,7 +66,7 @@ func initLightningClient() (lnrpc.LightningClient, error) {
 	// First attempt to establish a connection to lnd's RPC sever.
 	creds, err := credentials.NewClientTLSFromFile(tlsCertPath, "")
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("unable to read cert file: %v", err)
 	}
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
 

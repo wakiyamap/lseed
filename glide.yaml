@@ -1,17 +1,26 @@
-package: github.com/cdecker/lseed
+package: github.com/roasbeef/lseed
 import:
+- package: github.com/Sirupsen/logrus
+  version: ^1.0.3
+- package: github.com/btcsuite/btcd
+  subpackages:
+  - btcec
+- package: github.com/btcsuite/btcutil
+  subpackages:
+  - bech32
+- package: github.com/lightningnetwork/lnd
+  version: ^0.3.0-alpha
+  subpackages:
+  - lnrpc
+  - macaroons
 - package: github.com/miekg/dns
-- package: github.com/prometheus/client_golang
-  version: ^0.8.0
-- package: github.com/elazarl/go-bindata-assetfs
+- package: google.golang.org/grpc
+  version: b3ddf786825de56a4178401b7e174ee332173b66
   subpackages:
-  - '...'
-- package: github.com/cdecker/kugelblitz
+  - credentials
+- package: gopkg.in/macaroon.v1
+testImport:
+- package: github.com/davecgh/go-spew
+  version: ^1.1.0
   subpackages:
-  - '...'
-- package: github.com/powerman/rpc-codec
-  subpackages:
-  - jsonrpc2
-- package: github.com/adiabat/bech32
-- package: github.com/thoj/go-ircevent
-  version: ~0.1.0
+  - spew
