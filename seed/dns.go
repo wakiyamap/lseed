@@ -14,8 +14,8 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/adiabat/bech32"
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcutil/bech32"
 	"github.com/miekg/dns"
 )
 
@@ -108,12 +108,22 @@ func (ds *DnsServer) handleSRVQuery(request *dns.Msg, response *dns.Msg) {
 	}
 
 	for _, n := range nodes {
-		rawId, err := hex.DecodeString(n.Id)
+		rawID, err := hex.DecodeString(n.Id)
 		if err != nil {
 			continue
 		}
 
-		encodedId := bech32.Encode("ln", rawId)
+		convertedID, err := bech32.ConvertBits(rawID, 8, 5, true)
+		if err != nil {
+			log.Errorf("Unable to convert key=%x, %v", rawID, err)
+			continue
+		}
+		encodedId, err := bech32.Encode("ln", convertedID)
+		if err != nil {
+			log.Errorf("Unable to encode key=%x, %v", convertedID, err)
+			continue
+		}
+
 		nodeName := fmt.Sprintf("%s.%s.", encodedId, ds.rootDomain)
 		rr := &dns.SRV{
 			Hdr:      header,
@@ -169,9 +179,13 @@ func (ds *DnsServer) parseRequest(name string, qtype uint16) (*DnsRequest, error
 		} else if k == 'a' && qtype == dns.TypeSRV {
 			req.atypes, _ = strconv.Atoi(v)
 		} else if k == 'l' {
-			_, bin, err := bech32.Decode(cond)
+			_, bin5, err := bech32.Decode(cond)
 			if err != nil {
 				return nil, fmt.Errorf("malformed bech32 pubkey")
+			}
+			bin, err := bech32.ConvertBits(bin5, 5, 8, false)
+			if err != nil {
+				return nil, fmt.Errorf("unable to convert bits: %x", bin5)
 			}
 
 			p, err := btcec.ParsePubKey(bin, btcec.S256())
