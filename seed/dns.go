@@ -130,7 +130,7 @@ func (ds *DnsServer) handleSRVQuery(request *dns.Msg, response *dns.Msg) {
 			Priority: 10,
 			Weight:   10,
 			Target:   nodeName,
-			Port:     n.Addresses[0].Port,
+			Port:     uint16(n.Addresses[0].Port),
 		}
 		response.Answer = append(response.Answer, rr)
 		//if n.Type&1 == 1 {
@@ -190,7 +190,7 @@ func (ds *DnsServer) parseRequest(name string, qtype uint16) (*DnsRequest, error
 
 			p, err := btcec.ParsePubKey(bin, btcec.S256())
 			if err != nil {
-				return nil, fmt.Errorf("not a valid pubkey")
+				return nil, fmt.Errorf("not a valid pubkey: %x", bin)
 			}
 			req.node_id = fmt.Sprintf("%x", p.SerializeCompressed())
 		}

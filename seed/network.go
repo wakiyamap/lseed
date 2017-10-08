@@ -5,11 +5,13 @@
 package seed
 
 import (
+	"fmt"
 	"net"
 	"sync"
 	"time"
 
-	lrpc "github.com/cdecker/kugelblitz/lightningrpc"
+	log "github.com/Sirupsen/logrus"
+	"github.com/lightningnetwork/lnd/lnrpc"
 )
 
 const (
@@ -23,17 +25,15 @@ const (
 // and bit 1 indicates whether it uses the default port if set.
 type NodeType uint8
 
-type Address struct {
-	IP   net.IP
-	Port uint16
-}
-
 // Local model of a node,
 type Node struct {
-	Id        string
-	LastSeen  time.Time
-	Type      NodeType
-	Addresses []Address
+	Id string
+
+	LastSeen time.Time
+
+	Type NodeType
+
+	Addresses []net.TCPAddr
 }
 
 // The local view of the network
@@ -60,43 +60,42 @@ func (nv *NetworkView) RandomSample(query NodeType, count int) []Node {
 
 // Insert nodes into the map of known nodes. Existing nodes with the
 // same Id are overwritten.
-func (nv *NetworkView) AddNode(node lrpc.Node) Node {
-	n := Node{
-		Id:       node.Id,
+func (nv *NetworkView) AddNode(node *lnrpc.LightningNode) (*Node, error) {
+	n := &Node{
+		Id:       node.PubKey,
 		LastSeen: time.Now(),
 	}
 
-	for _, a := range node.Addresses {
-
-		if a.Type != "ipv4" && a.Type != "ipv6" {
-			continue
+	for _, addr := range node.Addresses {
+		parsedAddr, err := net.ResolveTCPAddr(addr.Network, addr.Addr)
+		if err != nil {
+			return nil, err
 		}
 
-		address := Address{
-			IP:   net.ParseIP(a.Address),
-			Port: a.Port,
-		}
-
-		if address.IP.To4() == nil {
+		if parsedAddr.IP.To4() == nil {
 			n.Type |= 1
 		} else {
 			n.Type |= 1 << 2
 		}
 
-		if address.Port == defaultPort {
+		if parsedAddr.Port == defaultPort {
 			n.Type |= 1 << 1
 		}
-		n.Addresses = append(n.Addresses, address)
+
+		n.Addresses = append(n.Addresses, *parsedAddr)
 	}
+
 	if len(n.Addresses) == 0 {
-		return n
+		return nil, fmt.Errorf("node had no addresses")
 	}
 
 	nv.nodesMut.Lock()
-	defer nv.nodesMut.Unlock()
-	nv.nodes[n.Id] = n
+	nv.nodes[n.Id] = *n
+	nv.nodesMut.Unlock()
 
-	return n
+	log.Infof("New node %v added n.Id, %v total nodes", n, len(nv.nodes))
+
+	return n, nil
 }
 
 func NewNetworkView() *NetworkView {
