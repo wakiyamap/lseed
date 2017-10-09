@@ -16,9 +16,9 @@ import (
 	macaroon "gopkg.in/macaroon.v1"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/btcsuite/btcutil"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/macaroons"
+	"github.com/roasbeef/btcutil"
 	"github.com/roasbeef/lseed/seed"
 )
 
@@ -103,16 +103,14 @@ func initLightningClient() (lnrpc.LightningClient, error) {
 // poller regularly polls the backing lnd node and updates the local network
 // view.
 func poller(lnd lnrpc.LightningClient, nview *seed.NetworkView) {
-	ticker := time.NewTicker(time.Second * time.Duration(*pollInterval))
-	for range ticker.C {
-
+	scrapeGraph := func() {
 		graphReq := &lnrpc.ChannelGraphRequest{}
 		graph, err := lnd.DescribeGraph(
 			context.Background(), graphReq,
 		)
 		if err != nil {
-			log.Errorf("Unable to query for graph: %v", err)
-			continue
+			log.Debugf("Unable to query for graph: %v", err)
+			return
 		}
 
 		log.Debugf("Got %d nodes from lnd", len(graph.Nodes))
@@ -120,8 +118,18 @@ func poller(lnd lnrpc.LightningClient, nview *seed.NetworkView) {
 			if len(node.Addresses) == 0 {
 				continue
 			}
-			nview.AddNode(node)
+
+			if _, err := nview.AddNode(node); err != nil {
+				log.Debugf("Unable to add node: %v", err)
+			}
 		}
+	}
+
+	scrapeGraph()
+
+	ticker := time.NewTicker(time.Second * time.Duration(*pollInterval))
+	for range ticker.C {
+		scrapeGraph()
 	}
 }
 
