@@ -29,7 +29,7 @@ var (
 
 	rootDomain = flag.String("root-domain", "nodes.lightning.directory", "Root DNS seed domain.")
 
-	pollInterval = flag.Int("poll-interval", 10, "Time between polls to lightningd for updates")
+	pollInterval = flag.Int("poll-interval", 30, "Time between polls to lightningd for updates")
 
 	debug = flag.Bool("debug", false, "Be very verbose")
 
