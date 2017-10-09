@@ -14,9 +14,9 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/btcsuite/btcd/btcec"
-	"github.com/btcsuite/btcutil/bech32"
 	"github.com/miekg/dns"
+	"github.com/roasbeef/btcd/btcec"
+	"github.com/roasbeef/btcutil/bech32"
 )
 
 type DnsServer struct {
@@ -235,7 +235,7 @@ func (ds *DnsServer) handleLightningDns(w dns.ResponseWriter, r *dns.Msg) {
 			ds.handleSRVQuery(r, m)
 		}
 	} else {
-		n, ok := ds.netview.nodes[req.node_id]
+		n, ok := ds.netview.reachableNodes[req.node_id]
 		if !ok {
 			log.Debugf("Unable to find node with ID %s", req.node_id)
 		}
