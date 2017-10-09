@@ -1,19 +1,20 @@
 package: github.com/roasbeef/lseed
 import:
 - package: github.com/Sirupsen/logrus
-  version: ^1.0.3
-- package: github.com/btcsuite/btcd
-  subpackages:
-  - btcec
-- package: github.com/btcsuite/btcutil
-  subpackages:
-  - bech32
 - package: github.com/lightningnetwork/lnd
-  version: ^0.3.0-alpha
+  version: 4aeaf5aaa9ecc21adeaf65b46a4add6231ad28b7
   subpackages:
   - lnrpc
   - macaroons
 - package: github.com/miekg/dns
+- package: github.com/roasbeef/btcd
+  version: 4b411f0e78f1faa96ae650d886170d018c1835bf
+  subpackages:
+  - btcec
+- package: github.com/roasbeef/btcutil
+  version: 1584022350b4400b511beab6a013f0189adeef40
+  subpackages:
+  - bech32
 - package: google.golang.org/grpc
   version: b3ddf786825de56a4178401b7e174ee332173b66
   subpackages:
@@ -21,6 +22,5 @@ import:
 - package: gopkg.in/macaroon.v1
 testImport:
 - package: github.com/davecgh/go-spew
-  version: ^1.1.0
   subpackages:
   - spew
