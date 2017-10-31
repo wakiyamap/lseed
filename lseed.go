@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,6 +29,8 @@ var (
 	lndNode = flag.String("lnd-node", "localhost:10009", "The host:port of the backing lnd node")
 
 	rootDomain = flag.String("root-domain", "nodes.lightning.directory", "Root DNS seed domain.")
+
+	authoritativeIP = flag.String("root-ip", "127.0.0.1", "The IP address of the authoritative name server. This is used to create a dummy record which allows clients to access the seed directly over TCP")
 
 	pollInterval = flag.Int("poll-interval", 30, "Time between polls to lightningd for updates")
 
@@ -150,7 +153,9 @@ func main() {
 	configure()
 
 	nview := seed.NewNetworkView()
-	dnsServer := seed.NewDnsServer(nview, *listenAddr, *rootDomain)
+	rootIP := net.ParseIP(*authoritativeIP)
+	dnsServer := seed.NewDnsServer(nview, *listenAddr, *rootDomain,
+		rootIP)
 
 	lndNode, err := initLightningClient()
 	if err != nil {
