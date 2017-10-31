@@ -10,8 +10,12 @@ package seed
 import (
 	"encoding/hex"
 	"fmt"
+	"net"
+	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/miekg/dns"
@@ -20,16 +24,20 @@ import (
 )
 
 type DnsServer struct {
-	netview    *NetworkView
-	listenAddr string
-	rootDomain string
+	netview         *NetworkView
+	listenAddr      string
+	rootDomain      string
+	authoritativeIP net.IP
 }
 
-func NewDnsServer(netview *NetworkView, listenAddr, rootDomain string) *DnsServer {
+func NewDnsServer(netview *NetworkView, listenAddr, rootDomain string,
+	authoritativeIP net.IP) *DnsServer {
+
 	return &DnsServer{
-		netview:    netview,
-		listenAddr: listenAddr,
-		rootDomain: rootDomain,
+		netview:         netview,
+		listenAddr:      listenAddr,
+		rootDomain:      rootDomain,
+		authoritativeIP: authoritativeIP,
 	}
 }
 
@@ -152,13 +160,21 @@ type DnsRequest struct {
 
 func (ds *DnsServer) parseRequest(name string, qtype uint16) (*DnsRequest, error) {
 	// Check that this is actually intended for us and not just some other domain
-	if !strings.HasSuffix(name, fmt.Sprintf("%s.", ds.rootDomain)) {
+	name = strings.ToLower(name)
+	if !strings.HasSuffix(strings.ToLower(name), fmt.Sprintf("%s.", ds.rootDomain)) {
 		return nil, fmt.Errorf("malformed request: %s", name)
 	}
 
 	// Check that we actually like the request
-	if qtype != dns.TypeA && qtype != dns.TypeAAAA && qtype != dns.TypeSRV {
-		return nil, fmt.Errorf("refusing to handle query type %d (%s)", qtype, dns.TypeToString[qtype])
+	switch qtype {
+	case dns.TypeA:
+	case dns.TypeAAAA:
+	case dns.TypeSRV:
+	default:
+		// If they don't query for any of our supported request types,
+		// then we'll exit early with an error.
+		return nil, fmt.Errorf("refusing to handle query type %d (%s)",
+			qtype, dns.TypeToString[qtype])
 	}
 
 	req := &DnsRequest{
@@ -167,6 +183,15 @@ func (ds *DnsServer) parseRequest(name string, qtype uint16) (*DnsRequest, error
 		atypes:    6,
 	}
 	parts := strings.Split(req.subdomain, ".")
+
+	// If they're attempting to pool for the IP address of the
+	// authoritative name server (us), then we'll return a slimmed down
+	// request to indicate this.
+	if req.subdomain == "soa." {
+		return &DnsRequest{
+			subdomain: req.subdomain,
+		}, nil
+	}
 
 	for _, cond := range parts {
 		if len(cond) == 0 {
@@ -221,8 +246,26 @@ func (ds *DnsServer) handleLightningDns(w dns.ResponseWriter, r *dns.Msg) {
 	m := new(dns.Msg)
 	m.SetReply(r)
 
-	// Is this a wildcard query?
-	if req.node_id == "" {
+	switch {
+	// If they're requesting our SOA shim, then we'll directly return the
+	// IP address of the authoritative DNS server for fallback TCP
+	// purposes.
+	case req.subdomain == "soa.":
+		soaResp := &dns.A{
+			Hdr: dns.RR_Header{
+				Rrtype: dns.TypeA,
+				Class:  dns.ClassINET,
+				Ttl:    60,
+				Name:   r.Question[0].Name,
+			},
+			A: ds.authoritativeIP,
+		}
+		m.Answer = append(m.Answer, soaResp)
+
+	// Is this a wildcard query? If so we'll either return: a set of
+	// reachable IPv6 addresses, IPv4 addresses, or return a set of SRV
+	// records that nodes can use to bootstrap to the network.
+	case req.node_id == "":
 		switch req.qtype {
 		case dns.TypeAAAA:
 			ds.handleAAAAQuery(r, m)
@@ -234,7 +277,11 @@ func (ds *DnsServer) handleLightningDns(w dns.ResponseWriter, r *dns.Msg) {
 		case dns.TypeSRV:
 			ds.handleSRVQuery(r, m)
 		}
-	} else {
+
+	// If they're targeting a specific sub-domain (which targets a node on
+	// the network), then we'll attempt to return a reachable IP address
+	// for the target node.
+	default:
 		n, ok := ds.netview.reachableNodes[req.node_id]
 		if !ok {
 			log.Debugf("Unable to find node with ID %s", req.node_id)
@@ -250,7 +297,8 @@ func (ds *DnsServer) handleLightningDns(w dns.ResponseWriter, r *dns.Msg) {
 
 	w.WriteMsg(m)
 	log.WithField("replies", len(m.Answer)).Debugf(
-		"Replying with %d answers and %d extras.", len(m.Answer), len(m.Extra))
+		"Replying with %d answers and %d extras (len=%v)",
+		len(m.Answer), len(m.Extra), m.Len())
 }
 
 func (ds *DnsServer) Serve() {
