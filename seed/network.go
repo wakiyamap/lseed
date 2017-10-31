@@ -124,8 +124,6 @@ func (nv *NetworkView) AddNode(node *lnrpc.LightningNode) (*Node, error) {
 	nv.allNodes[n.Id] = *n
 	nv.Unlock()
 
-	log.Infof("New node %v added n.Id, %v total nodes", n, len(nv.allNodes))
-
 	go func() {
 		nv.freshNodes <- *n
 	}()
