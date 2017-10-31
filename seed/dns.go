@@ -255,8 +255,27 @@ func (ds *DnsServer) handleLightningDns(w dns.ResponseWriter, r *dns.Msg) {
 
 func (ds *DnsServer) Serve() {
 	dns.HandleFunc(ds.rootDomain, ds.handleLightningDns)
-	server := &dns.Server{Addr: ds.listenAddr, Net: "udp"}
-	if err := server.ListenAndServe(); err != nil {
-		log.Errorf("Failed to setup the udp server: %s\n", err.Error())
-	}
+
+	// We'll launch goroutines to listen on both udp and tcp as some
+	// clients may fallback to opening a direct connection to the
+	// authoritative server in the case that their resolves have issues
+	// with our large-ish responses over udp.
+	go func() {
+		udpServer := &dns.Server{Addr: ds.listenAddr, Net: "udp"}
+		if err := udpServer.ListenAndServe(); err != nil {
+			panic(fmt.Sprintf("failed to setup the udp "+
+				"server: %s\n", err.Error()))
+		}
+	}()
+	go func() {
+		tcpServer := &dns.Server{Addr: ds.listenAddr, Net: "tcp"}
+		if err := tcpServer.ListenAndServe(); err != nil {
+			panic(fmt.Sprintf("failed to setup the tcp "+
+				"server: %s\n", err.Error()))
+		}
+	}()
+
+	quitChan := make(chan os.Signal)
+	signal.Notify(quitChan, syscall.SIGINT, syscall.SIGTERM)
+	<-quitChan
 }
