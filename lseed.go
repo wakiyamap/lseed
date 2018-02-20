@@ -14,7 +14,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	macaroon "gopkg.in/macaroon.v1"
+	macaroon "gopkg.in/macaroon.v2"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/lightningnetwork/lnd/lnrpc"

@@ -1,0 +1,140 @@
+hash: 00e6eff88a57213875d518eb6832c48938feab57cc11d137eafa160aaa0c65e2
+updated: 2018-02-20T12:48:32.773901578-08:00
+imports:
+- name: github.com/boltdb/bolt
+  version: 2f1ce7a837dcb8da3ec595b1dac9d0632f0f99e8
+- name: github.com/btcsuite/golangcrypto
+  version: 53f62d9b43e87a6c56975cf862af7edf33a8d0df
+  subpackages:
+  - nacl/secretbox
+  - pbkdf2
+  - poly1305
+  - ripemd160
+  - salsa20/salsa
+  - scrypt
+- name: github.com/golang/protobuf
+  version: bbd03ef6da3a115852eaf24c8a1c46aeb39aa175
+  subpackages:
+  - jsonpb
+  - proto
+  - protoc-gen-go/descriptor
+  - ptypes/any
+  - ptypes/struct
+- name: github.com/grpc-ecosystem/grpc-gateway
+  version: f2862b476edcef83412c7af8687c9cd8e4097c0f
+  subpackages:
+  - runtime
+  - runtime/internal
+  - utilities
+- name: github.com/juju/loggo
+  version: 8232ab8918d91c72af1a9fb94d3edbe31d88b790
+- name: github.com/lightningnetwork/lnd
+  version: 236d53785d1b7dae39207edb6256a96f5b75e858
+  subpackages:
+  - lnrpc
+  - macaroons
+- name: github.com/miekg/dns
+  version: 5364553f1ee9cddc7ac8b62dce148309c386695b
+- name: github.com/roasbeef/btcd
+  version: 4b411f0e78f1faa96ae650d886170d018c1835bf
+  subpackages:
+  - btcec
+  - chaincfg
+  - chaincfg/chainhash
+  - wire
+- name: github.com/roasbeef/btcutil
+  version: 1584022350b4400b511beab6a013f0189adeef40
+  subpackages:
+  - base58
+  - bech32
+- name: github.com/roasbeef/btcwallet
+  version: 4f4765c3e3baf4c7b40c311340a076ec83c5ef3a
+  subpackages:
+  - chain
+  - internal/zero
+  - snacl
+  - waddrmgr
+  - wallet
+  - walletdb/bdb
+- name: github.com/rogpeppe/fastuuid
+  version: 6724a57986aff9bff1a1770e9347036def7c89f6
+- name: github.com/Sirupsen/logrus
+  version: 8c0189d9f6bbf301e5d055d34268156b317016af
+- name: golang.org/x/crypto
+  version: 432090b8f568c018896cd8a0fb0345872bbac6ce
+  subpackages:
+  - curve25519
+  - ed25519
+  - ed25519/internal/edwards25519
+  - nacl/box
+  - nacl/secretbox
+  - poly1305
+  - ripemd160
+  - salsa20/salsa
+  - ssh/terminal
+- name: golang.org/x/net
+  version: cbe0f9307d0156177f9dd5dc85da1a31abc5f2fb
+  subpackages:
+  - bpf
+  - context
+  - http2
+  - http2/hpack
+  - idna
+  - internal/iana
+  - internal/socket
+  - internal/timeseries
+  - ipv4
+  - ipv6
+  - lex/httplex
+  - trace
+- name: golang.org/x/sys
+  version: 37707fdb30a5b38865cfb95e5aab41707daec7fd
+  subpackages:
+  - unix
+  - windows
+- name: golang.org/x/text
+  version: 4e4a3210bb54bb31f6ab2cdca2edcc0b50c420c1
+  subpackages:
+  - secure/bidirule
+  - transform
+  - unicode/bidi
+  - unicode/norm
+- name: google.golang.org/genproto
+  version: 2b5a72b8730b0b16380010cfe5286c42108d88e7
+  subpackages:
+  - googleapis/api/annotations
+  - googleapis/rpc/status
+- name: google.golang.org/grpc
+  version: b3ddf786825de56a4178401b7e174ee332173b66
+  subpackages:
+  - codes
+  - connectivity
+  - credentials
+  - grpclb/grpc_lb_v1
+  - grpclog
+  - internal
+  - keepalive
+  - metadata
+  - naming
+  - peer
+  - stats
+  - status
+  - tap
+  - transport
+- name: gopkg.in/errgo.v1
+  version: 442357a80af5c6bf9b6d51ae791a39c3421004f3
+- name: gopkg.in/macaroon-bakery.v2
+  version: 22c04a94d902625448265ef041bb53e715452a40
+  subpackages:
+  - bakery
+  - bakery/checkers
+  - bakery/internal/macaroonpb
+- name: gopkg.in/macaroon.v1
+  version: ab101776739ee61baab9bc50e4b33b5aeb3ac843
+- name: gopkg.in/macaroon.v2
+  version: bed2a428da6e56d950bed5b41fcbae3141e5b0d0
+testImports:
+- name: github.com/davecgh/go-spew
+  version: 87df7c60d5820d0f8ae11afede5aa52325c09717
+  subpackages:
+  - spew
