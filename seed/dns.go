@@ -19,8 +19,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/miekg/dns"
-	"github.com/roasbeef/btcd/btcec"
-	"github.com/roasbeef/btcutil/bech32"
+	"github.com/wakiyamap/monad/btcec"
+	"github.com/wakiyamap/monautil/bech32"
 )
 
 type DnsServer struct {

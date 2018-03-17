@@ -17,10 +17,10 @@ import (
 	macaroon "gopkg.in/macaroon.v1"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/lightningnetwork/lnd/lnrpc"
-	"github.com/lightningnetwork/lnd/macaroons"
-	"github.com/roasbeef/btcutil"
-	"github.com/roasbeef/lseed/seed"
+	"github.com/wakiyamap/lnd/lnrpc"
+	"github.com/wakiyamap/lnd/macaroons"
+	"github.com/wakiyamap/monautil"
+	"github.com/wakiyamap/lseed/seed"
 )
 
 var (
@@ -28,7 +28,7 @@ var (
 
 	lndNode = flag.String("lnd-node", "localhost:10009", "The host:port of the backing lnd node")
 
-	rootDomain = flag.String("root-domain", "nodes.lightning.directory", "Root DNS seed domain.")
+	rootDomain = flag.String("root-domain", "lndnode.tamami-foundation.org", "Root DNS seed domain.")
 
 	authoritativeIP = flag.String("root-ip", "127.0.0.1", "The IP address of the authoritative name server. This is used to create a dummy record which allows clients to access the seed directly over TCP")
 
@@ -40,7 +40,7 @@ var (
 )
 
 var (
-	lndHomeDir             = btcutil.AppDataDir("lnd", false)
+	lndHomeDir             = monautil.AppDataDir("lnd", false)
 	defaultTLSCertFilename = "tls.cert"
 	tlsCertPath            = filepath.Join(lndHomeDir, defaultTLSCertFilename)
 

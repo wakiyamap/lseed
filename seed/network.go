@@ -12,7 +12,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/wakiyamap/lnd/lnrpc"
 )
 
 const (

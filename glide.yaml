@@ -1,18 +1,18 @@
-package: github.com/roasbeef/lseed
+package: github.com/wakiyamap/lseed
 import:
 - package: github.com/Sirupsen/logrus
-- package: github.com/lightningnetwork/lnd
-  version: 4aeaf5aaa9ecc21adeaf65b46a4add6231ad28b7
+- package: github.com/wakiyamap/lnd
+  version: 2915f46e9279e9c26acdeaf09b31c88db7d45fa7
   subpackages:
   - lnrpc
   - macaroons
 - package: github.com/miekg/dns
-- package: github.com/roasbeef/btcd
-  version: 4b411f0e78f1faa96ae650d886170d018c1835bf
+- package: github.com/wakiyamap/monad
+  version: a2f3b066937beca665eb5ab5799484d66c94968d
   subpackages:
   - btcec
-- package: github.com/roasbeef/btcutil
-  version: 1584022350b4400b511beab6a013f0189adeef40
+- package: github.com/wakiyamap/monautil
+  version: f5bfcf53b9ae24b8146086c9c11790a5f0616d9d
   subpackages:
   - bech32
 - package: google.golang.org/grpc
