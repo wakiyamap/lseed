@@ -28,7 +28,7 @@ var (
 
 	lndNode = flag.String("lnd-node", "localhost:10009", "The host:port of the backing lnd node")
 
-	rootDomain = flag.String("root-domain", "lndnode.tamami-foundation.org", "Root DNS seed domain.")
+	rootDomain = flag.String("root-domain", "lnd.nodes.directory", "Root DNS seed domain.")
 
 	authoritativeIP = flag.String("root-ip", "127.0.0.1", "The IP address of the authoritative name server. This is used to create a dummy record which allows clients to access the seed directly over TCP")
 
