@@ -1,0 +1,146 @@
+hash: 8511356aceb1dfc19bcca50587576b0dbfd2942b886e8a8ef033b0fa66d7bfdf
+updated: 2018-04-04T07:40:17.058310882+09:00
+imports:
+- name: github.com/aead/skein
+  version: 9365ae6e95d294dc113a0b308852f97c916db233
+  subpackages:
+  - threefish
+- name: github.com/bitgoin/lyra2rev2
+  version: bae9ad2043bb55facb14c4918e909f88a7d3ed84
+  subpackages:
+  - sha3
+- name: github.com/btcsuite/golangcrypto
+  version: 53f62d9b43e87a6c56975cf862af7edf33a8d0df
+  subpackages:
+  - nacl/secretbox
+  - pbkdf2
+  - poly1305
+  - ripemd160
+  - salsa20/salsa
+  - scrypt
+- name: github.com/coreos/bbolt
+  version: af9db2027c98c61ecd8e17caa5bd265792b9b9a2
+- name: github.com/dchest/blake256
+  version: dee3fe6eb0e98dc774a94fc231f85baf7c29d360
+- name: github.com/golang/protobuf
+  version: bbd03ef6da3a115852eaf24c8a1c46aeb39aa175
+  subpackages:
+  - jsonpb
+  - proto
+  - protoc-gen-go/descriptor
+  - ptypes/any
+  - ptypes/struct
+- name: github.com/grpc-ecosystem/grpc-gateway
+  version: f2862b476edcef83412c7af8687c9cd8e4097c0f
+  subpackages:
+  - runtime
+  - runtime/internal
+  - utilities
+- name: github.com/juju/loggo
+  version: 8232ab8918d91c72af1a9fb94d3edbe31d88b790
+- name: github.com/miekg/dns
+  version: 5b169d1842fbc764c22df259de0a17085c48d8c2
+- name: github.com/roasbeef/btcwallet
+  version: 45445d1b09670109410174cb01fab0b133e3a904
+  subpackages:
+  - internal/zero
+  - snacl
+- name: github.com/rogpeppe/fastuuid
+  version: 6724a57986aff9bff1a1770e9347036def7c89f6
+- name: github.com/Sirupsen/logrus
+  version: 90150a8ed11b6ce285e77e8af2b0109559ce4777
+- name: github.com/wakiyamap/lnd
+  version: 63004942c89f20c318743a3c32a38621d548b292
+  subpackages:
+  - lnrpc
+  - macaroons
+- name: github.com/wakiyamap/lyra2rev2
+  version: bae9ad2043bb55facb14c4918e909f88a7d3ed84
+- name: github.com/wakiyamap/monad
+  version: 334ed97b997397b5357ef335a2362902efbfdaea
+  subpackages:
+  - btcec
+  - chaincfg
+  - chaincfg/chainhash
+  - wire
+- name: github.com/wakiyamap/monautil
+  version: 5633c0880c69eabe323bf209e7878b5e4aa29595
+  subpackages:
+  - base58
+  - bech32
+- name: golang.org/x/crypto
+  version: 9419663f5a44be8b34ca85f08abc5fe1be11f8a3
+  subpackages:
+  - curve25519
+  - ed25519
+  - ed25519/internal/edwards25519
+  - nacl/box
+  - nacl/secretbox
+  - poly1305
+  - ripemd160
+  - salsa20/salsa
+  - ssh/terminal
+- name: golang.org/x/net
+  version: 24dd3780ca4f75fed9f321890729414a4b5d3f13
+  subpackages:
+  - bpf
+  - context
+  - http2
+  - http2/hpack
+  - idna
+  - internal/iana
+  - internal/socket
+  - internal/timeseries
+  - ipv4
+  - ipv6
+  - lex/httplex
+  - trace
+- name: golang.org/x/sys
+  version: 2f1e207ee39ff70f3433e49c6eb52677a515e3b5
+  subpackages:
+  - unix
+  - windows
+- name: golang.org/x/text
+  version: 8c34f848e18c4bd34d02db7f19a0ed1a0a8f5852
+  subpackages:
+  - secure/bidirule
+  - transform
+  - unicode/bidi
+  - unicode/norm
+- name: google.golang.org/genproto
+  version: f8c8703595236ae70fdf8789ecb656ea0bcdcf46
+  subpackages:
+  - googleapis/api/annotations
+  - googleapis/rpc/status
+- name: google.golang.org/grpc
+  version: b3ddf786825de56a4178401b7e174ee332173b66
+  subpackages:
+  - codes
+  - connectivity
+  - credentials
+  - grpclb/grpc_lb_v1
+  - grpclog
+  - internal
+  - keepalive
+  - metadata
+  - naming
+  - peer
+  - stats
+  - status
+  - tap
+  - transport
+- name: gopkg.in/errgo.v1
+  version: 442357a80af5c6bf9b6d51ae791a39c3421004f3
+- name: gopkg.in/macaroon-bakery.v2
+  version: 94012773d2874a067572bd16d7d11ae02968b47b
+  subpackages:
+  - bakery
+  - bakery/checkers
+  - bakery/internal/macaroonpb
+- name: gopkg.in/macaroon.v2
+  version: bed2a428da6e56d950bed5b41fcbae3141e5b0d0
+testImports:
+- name: github.com/davecgh/go-spew
+  version: ecdeabc65495df2dec95d7c4a4c3e021903035e5
+  subpackages:
+  - spew
