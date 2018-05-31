@@ -107,6 +107,14 @@ func initLightningClient(nodeHost, tlsCertPath, macPath string) (lnrpc.Lightning
 	// our RPC connection properly.
 	lnd := lnrpc.NewLightningClient(conn)
 
+	// Before we proceed, make sure that we can query the target node.
+	_, err = lnd.GetInfo(
+		context.Background(), &lnrpc.GetInfoRequest{},
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	return lnd, nil
 }
 
