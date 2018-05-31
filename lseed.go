@@ -26,7 +26,17 @@ import (
 var (
 	listenAddr = flag.String("listen", "0.0.0.0:53", "Listen address for incoming requests.")
 
-	lndNode = flag.String("lnd-node", "localhost:10009", "The host:port of the backing lnd node")
+	bitcoinNodeHost  = flag.String("btc-lnd-node", "", "The host:port of the backing btc lnd node")
+	litecoinNodeHost = flag.String("ltc-lnd-node", "", "The host:port of the backing ltc lnd node")
+	testNodeHost     = flag.String("test-lnd-node", "", "The host:port of the backing btc testlnd node")
+
+	bitcoinTLSPath  = flag.String("btc-tls-path", "", "The path to the TLS cert for the btc lnd node")
+	litecoinTLSPath = flag.String("ltc-tls-path", "", "The path to the TLS cert for the ltc lnd node")
+	testTLSPath     = flag.String("test-tls-path", "", "The path to the TLS cert for the test lnd node")
+
+	bitcoinMacPath  = flag.String("btc-mac-path", "", "The path to the macaroon for the btc lnd node")
+	litecoinMacPath = flag.String("ltc-mac-path", "", "The path to the macaroon for the ltc lnd node")
+	testMacPath     = flag.String("test-mac-path", "", "The path to the macaroon for the test lnd node")
 
 	rootDomain = flag.String("root-domain", "nodes.lightning.directory", "Root DNS seed domain.")
 
@@ -40,12 +50,7 @@ var (
 )
 
 var (
-	lndHomeDir             = btcutil.AppDataDir("lnd", false)
-	defaultTLSCertFilename = "tls.cert"
-	tlsCertPath            = filepath.Join(lndHomeDir, defaultTLSCertFilename)
-
-	defaultMacaroonFilename = "readonly.macaroon"
-	defaultMacaroonPath     = filepath.Join(lndHomeDir, defaultMacaroonFilename)
+	lndHomeDir = btcutil.AppDataDir("lnd", false)
 )
 
 // cleanAndExpandPath expands environment variables and leading ~ in the passed
@@ -65,8 +70,10 @@ func cleanAndExpandPath(path string) string {
 
 // initLightningClient attempts to initialize, and connect out to the backing
 // lnd node as specified by the lndNode ccommand line flag.
-func initLightningClient() (lnrpc.LightningClient, error) {
+func initLightningClient(nodeHost, tlsCertPath, macPath string) (lnrpc.LightningClient, error) {
+
 	// First attempt to establish a connection to lnd's RPC sever.
+	tlsCertPath = cleanAndExpandPath(tlsCertPath)
 	creds, err := credentials.NewClientTLSFromFile(tlsCertPath, "")
 	if err != nil {
 		return nil, fmt.Errorf("unable to read cert file: %v", err)
@@ -74,7 +81,7 @@ func initLightningClient() (lnrpc.LightningClient, error) {
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
 
 	// Load the specified macaroon file.
-	macPath := cleanAndExpandPath(defaultMacaroonPath)
+	macPath = cleanAndExpandPath(macPath)
 	macBytes, err := ioutil.ReadFile(macPath)
 	if err != nil {
 		return nil, err
@@ -90,7 +97,7 @@ func initLightningClient() (lnrpc.LightningClient, error) {
 		grpc.WithPerRPCCredentials(macaroons.NewMacaroonCredential(mac)),
 	)
 
-	conn, err := grpc.Dial(*lndNode, opts...)
+	conn, err := grpc.Dial(nodeHost, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to dial to lnd's gRPC server: ",
 			err)
@@ -152,16 +159,78 @@ func main() {
 
 	configure()
 
-	nview := seed.NewNetworkView()
-	rootIP := net.ParseIP(*authoritativeIP)
-	dnsServer := seed.NewDnsServer(nview, *listenAddr, *rootDomain,
-		rootIP)
+	netViewMap := make(map[string]*seed.ChainView)
 
-	lndNode, err := initLightningClient()
-	if err != nil {
-		log.Fatal("unable to connect to lnd: %v", err)
+	if *bitcoinNodeHost != "" && *bitcoinTLSPath != "" && *bitcoinMacPath != "" {
+		log.Infof("Creating BTC chain view")
+
+		lndNode, err := initLightningClient(
+			*bitcoinNodeHost, *bitcoinTLSPath, *bitcoinMacPath,
+		)
+		if err != nil {
+			panic(fmt.Sprintf("unable to connect to btc lnd: %v", err))
+		}
+
+		nView := seed.NewNetworkView("bitcoin")
+		go poller(lndNode, nView)
+
+		log.Infof("BTC chain view active")
+
+		netViewMap[""] = &seed.ChainView{
+			NetView: nView,
+			Node:    lndNode,
+		}
+
 	}
 
-	go poller(lndNode, nview)
+	if *litecoinNodeHost != "" && *litecoinTLSPath != "" && *litecoinMacPath != "" {
+		log.Infof("Creating LTC chain view")
+
+		lndNode, err := initLightningClient(
+			*litecoinNodeHost, *litecoinTLSPath, *litecoinMacPath,
+		)
+		if err != nil {
+			panic(fmt.Sprintf("unable to connect to ltc lnd: %v", err))
+		}
+
+		nView := seed.NewNetworkView("litecoin")
+		go poller(lndNode, nView)
+
+		netViewMap["ltc."] = &seed.ChainView{
+			NetView: nView,
+			Node:    lndNode,
+		}
+
+	}
+	if *testNodeHost != "" && *testTLSPath != "" && *testMacPath != "" {
+		log.Infof("Creating BTC testnet chain view")
+
+		lndNode, err := initLightningClient(
+			*testNodeHost, *testTLSPath, *testMacPath,
+		)
+		if err != nil {
+			panic(fmt.Sprintf("unable to connect to test lnd: %v", err))
+		}
+
+		nView := seed.NewNetworkView("testnet")
+		go poller(lndNode, nView)
+
+		log.Infof("TBCT chain view active")
+
+		netViewMap["test."] = &seed.ChainView{
+			NetView: nView,
+			Node:    lndNode,
+		}
+	}
+
+	if len(netViewMap) == 0 {
+		panic(fmt.Sprintf("must specify at least one node type"))
+	}
+
+	rootIP := net.ParseIP(*authoritativeIP)
+	dnsServer := seed.NewDnsServer(
+		netViewMap, *listenAddr, *rootDomain, rootIP,
+	)
+
 	dnsServer.Serve()
 }
