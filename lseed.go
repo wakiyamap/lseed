@@ -26,13 +26,23 @@ import (
 var (
 	listenAddr = flag.String("listen", "0.0.0.0:53", "Listen address for incoming requests.")
 
-	lndNode = flag.String("lnd-node", "localhost:10009", "The host:port of the backing lnd node")
+	bitcoinNodeHost  = flag.String("btc-lnd-node", "", "The host:port of the backing btc lnd node")
+	monacoinNodeHost = flag.String("mona-lnd-node", "", "The host:port of the backing mona lnd node")
+	testNodeHost     = flag.String("test-lnd-node", "", "The host:port of the backing btc testlnd node")
 
-	rootDomain = flag.String("root-domain", "lnd.nodes.directory", "Root DNS seed domain.")
+	bitcoinTLSPath  = flag.String("btc-tls-path", "", "The path to the TLS cert for the btc lnd node")
+	monacoinTLSPath = flag.String("mona-tls-path", "", "The path to the TLS cert for the mona lnd node")
+	testTLSPath     = flag.String("test-tls-path", "", "The path to the TLS cert for the test lnd node")
+
+	bitcoinMacPath  = flag.String("btc-mac-path", "", "The path to the macaroon for the btc lnd node")
+	monacoinMacPath = flag.String("mona-mac-path", "", "The path to the macaroon for the mona lnd node")
+	testMacPath     = flag.String("test-mac-path", "", "The path to the macaroon for the test lnd node")
+
+	rootDomain = flag.String("root-domain", "nodes.lightning.directory", "Root DNS seed domain.")
 
 	authoritativeIP = flag.String("root-ip", "127.0.0.1", "The IP address of the authoritative name server. This is used to create a dummy record which allows clients to access the seed directly over TCP")
 
-	pollInterval = flag.Int("poll-interval", 30, "Time between polls to lightningd for updates")
+	pollInterval = flag.Int("poll-interval", 180, "Time between polls to lightningd for updates")
 
 	debug = flag.Bool("debug", false, "Be very verbose")
 
@@ -40,12 +50,7 @@ var (
 )
 
 var (
-	lndHomeDir             = monautil.AppDataDir("lnd", false)
-	defaultTLSCertFilename = "tls.cert"
-	tlsCertPath            = filepath.Join(lndHomeDir, defaultTLSCertFilename)
-
-	defaultMacaroonFilename = "readonly.macaroon"
-	defaultMacaroonPath     = filepath.Join(lndHomeDir, defaultMacaroonFilename)
+	lndHomeDir = monautil.AppDataDir("lnd", false)
 )
 
 // cleanAndExpandPath expands environment variables and leading ~ in the passed
@@ -65,16 +70,16 @@ func cleanAndExpandPath(path string) string {
 
 // initLightningClient attempts to initialize, and connect out to the backing
 // lnd node as specified by the lndNode ccommand line flag.
-func initLightningClient() (lnrpc.LightningClient, error) {
+func initLightningClient(nodeHost, tlsCertPath, macPath string) (lnrpc.LightningClient, error) {
 	// First attempt to establish a connection to lnd's RPC sever.
+	tlsCertPath = cleanAndExpandPath(tlsCertPath)
 	creds, err := credentials.NewClientTLSFromFile(tlsCertPath, "")
 	if err != nil {
 		return nil, fmt.Errorf("unable to read cert file: %v", err)
 	}
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
-
 	// Load the specified macaroon file.
-	macPath := cleanAndExpandPath(defaultMacaroonPath)
+	macPath = cleanAndExpandPath(macPath)
 	macBytes, err := ioutil.ReadFile(macPath)
 	if err != nil {
 		return nil, err
@@ -83,22 +88,27 @@ func initLightningClient() (lnrpc.LightningClient, error) {
 	if err = mac.UnmarshalBinary(macBytes); err != nil {
 		return nil, err
 	}
-
 	// Now we append the macaroon credentials to the dial options.
 	opts = append(
 		opts,
 		grpc.WithPerRPCCredentials(macaroons.NewMacaroonCredential(mac)),
 	)
-
-	conn, err := grpc.Dial(*lndNode, opts...)
+	conn, err := grpc.Dial(nodeHost, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to dial to lnd's gRPC server: ",
 			err)
 	}
-
 	// If we're able to connect out to the lnd node, then we can start up
 	// our RPC connection properly.
 	lnd := lnrpc.NewLightningClient(conn)
+
+	// Before we proceed, make sure that we can query the target node.
+	_, err = lnd.GetInfo(
+		context.Background(), &lnrpc.GetInfoRequest{},
+	)
+	if err != nil {
+		return nil, err
+	}
 
 	return lnd, nil
 }
@@ -152,16 +162,78 @@ func main() {
 
 	configure()
 
-	nview := seed.NewNetworkView()
-	rootIP := net.ParseIP(*authoritativeIP)
-	dnsServer := seed.NewDnsServer(nview, *listenAddr, *rootDomain,
-		rootIP)
+	netViewMap := make(map[string]*seed.ChainView)
 
-	lndNode, err := initLightningClient()
-	if err != nil {
-		log.Fatal("unable to connect to lnd: %v", err)
+	if *bitcoinNodeHost != "" && *bitcoinTLSPath != "" && *bitcoinMacPath != "" {
+		log.Infof("Creating BTC chain view")
+
+		lndNode, err := initLightningClient(
+			*bitcoinNodeHost, *bitcoinTLSPath, *bitcoinMacPath,
+		)
+		if err != nil {
+			panic(fmt.Sprintf("unable to connect to btc lnd: %v", err))
+		}
+
+		nView := seed.NewNetworkView("bitcoin")
+		go poller(lndNode, nView)
+
+		log.Infof("BTC chain view active")
+
+		netViewMap[""] = &seed.ChainView{
+			NetView: nView,
+			Node:    lndNode,
+		}
+
 	}
 
-	go poller(lndNode, nview)
+	if *monacoinNodeHost != "" && *monacoinTLSPath != "" && *monacoinMacPath != "" {
+		log.Infof("Creating MONA chain view")
+
+		lndNode, err := initLightningClient(
+			*monacoinNodeHost, *monacoinTLSPath, *monacoinMacPath,
+		)
+		if err != nil {
+			panic(fmt.Sprintf("unable to connect to mona lnd: %v", err))
+		}
+
+		nView := seed.NewNetworkView("monacoin")
+		go poller(lndNode, nView)
+
+		netViewMap[""] = &seed.ChainView{
+			NetView: nView,
+			Node:    lndNode,
+		}
+
+	}
+	if *testNodeHost != "" && *testTLSPath != "" && *testMacPath != "" {
+		log.Infof("Creating BTC testnet chain view")
+
+		lndNode, err := initLightningClient(
+			*testNodeHost, *testTLSPath, *testMacPath,
+		)
+		if err != nil {
+			panic(fmt.Sprintf("unable to connect to test lnd: %v", err))
+		}
+
+		nView := seed.NewNetworkView("testnet")
+		go poller(lndNode, nView)
+
+		log.Infof("TBCT chain view active")
+
+		netViewMap["test."] = &seed.ChainView{
+			NetView: nView,
+			Node:    lndNode,
+		}
+	}
+
+	if len(netViewMap) == 0 {
+		panic(fmt.Sprintf("must specify at least one node type"))
+	}
+
+	rootIP := net.ParseIP(*authoritativeIP)
+	dnsServer := seed.NewDnsServer(
+		netViewMap, *listenAddr, *rootDomain, rootIP,
+	)
+
 	dnsServer.Serve()
 }

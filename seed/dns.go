@@ -24,17 +24,17 @@ import (
 )
 
 type DnsServer struct {
-	netview         *NetworkView
+	chainViews      map[string]*ChainView
 	listenAddr      string
 	rootDomain      string
 	authoritativeIP net.IP
 }
 
-func NewDnsServer(netview *NetworkView, listenAddr, rootDomain string,
+func NewDnsServer(chainViews map[string]*ChainView, listenAddr, rootDomain string,
 	authoritativeIP net.IP) *DnsServer {
 
 	return &DnsServer{
-		netview:         netview,
+		chainViews:      chainViews,
 		listenAddr:      listenAddr,
 		rootDomain:      rootDomain,
 		authoritativeIP: authoritativeIP,
@@ -85,15 +85,64 @@ func addAAAAResponse(n Node, name string, responses *[]dns.RR) {
 	}
 }
 
-func (ds *DnsServer) handleAAAAQuery(request *dns.Msg, response *dns.Msg) {
-	nodes := ds.netview.RandomSample(3, 25)
+func (ds *DnsServer) locateChainView(subdomain string) *ChainView {
+	fmt.Println("locate subdom")
+
+	subdomain = strings.TrimSpace(subdomain)
+	segments := strings.SplitAfter(subdomain, ".")
+	log.Debug("seg: ", segments)
+	log.Debug("seg: ", len(segments))
+
+	switch {
+
+	// If the segment has three parts, then this means it's of the form:
+	// nodeid.chain.root-domain. In this case, we'll target the middle item
+	// in order to fetch the proper chain view.
+	case len(segments) == 3:
+		chain := segments[1]
+		log.Debug("chain: ", chain)
+		log.Debug("chain: ", chain == "test.")
+
+		return ds.chainViews[chain]
+
+	// Otherwise, it's of the form nodeid.root-domain. In this case, we'll
+	// target the final element, which should give us "", or the btc
+	// mainnet chain view.
+	//
+	// nodeid.
+	case len(segments) == 2:
+		return ds.chainViews[segments[1]]
+
+	default:
+		return nil
+	}
+}
+
+func (ds *DnsServer) handleAAAAQuery(request *dns.Msg, response *dns.Msg,
+	subDomain string) {
+
+	chainView, ok := ds.chainViews[subDomain]
+	if !ok {
+		log.Errorf("no chain view found for %v", subDomain)
+		return
+	}
+
+	nodes := chainView.NetView.RandomSample(3, 25)
 	for _, n := range nodes {
 		addAAAAResponse(n, request.Question[0].Name, &response.Answer)
 	}
 }
 
-func (ds *DnsServer) handleAQuery(request *dns.Msg, response *dns.Msg) {
-	nodes := ds.netview.RandomSample(2, 25)
+func (ds *DnsServer) handleAQuery(request *dns.Msg, response *dns.Msg,
+	subDomain string) {
+
+	chainView, ok := ds.chainViews[subDomain]
+	if !ok {
+		log.Errorf("no chain view found for %v", subDomain)
+		return
+	}
+
+	nodes := chainView.NetView.RandomSample(2, 25)
 
 	for _, n := range nodes {
 		addAResponse(n, request.Question[0].Name, &response.Answer)
@@ -105,8 +154,47 @@ func (ds *DnsServer) handleAQuery(request *dns.Msg, response *dns.Msg) {
 // Unlike the A and AAAA requests these are a bit ambiguous, since the
 // client may either be IPv4 or IPv6, so just return a mix and let the
 // client figure it out.
-func (ds *DnsServer) handleSRVQuery(request *dns.Msg, response *dns.Msg) {
-	nodes := ds.netview.RandomSample(255, 25)
+func (ds *DnsServer) handleSRVQuery(request *dns.Msg, response *dns.Msg,
+	subDomain string) {
+
+	log.Debugf("taget subdomain: ", subDomain)
+
+	var (
+		chainView *ChainView
+		prefix    string
+	)
+
+	subDomain = strings.TrimSpace(subDomain)
+	segments := strings.SplitAfter(subDomain, ".")
+
+	switch {
+
+	// w/ chain and target (_nodes._tcp.test)
+	case len(segments) == 4:
+		prefix = segments[2]
+		chainView = ds.chainViews[segments[2]]
+
+	// w/ no chain and target  (_nodes._tcp.)
+	case len(segments) == 3:
+		prefix = segments[2]
+		chainView = ds.chainViews[segments[2]]
+
+	// str8 just target (subdomain) (test.)
+	case len(segments) == 2:
+		prefix = segments[0]
+		chainView = ds.chainViews[segments[0]]
+
+	// default nodes.lightning.diretory no target
+	default:
+		chainView = ds.chainViews[""]
+	}
+
+	if chainView == nil {
+		log.Errorf("srv no chain view found for %v", subDomain)
+		return
+	}
+
+	nodes := chainView.NetView.RandomSample(255, 25)
 
 	header := dns.RR_Header{
 		Name:   request.Question[0].Name,
@@ -132,7 +220,7 @@ func (ds *DnsServer) handleSRVQuery(request *dns.Msg, response *dns.Msg) {
 			continue
 		}
 
-		nodeName := fmt.Sprintf("%s.%s.", encodedId, ds.rootDomain)
+		nodeName := fmt.Sprintf("%s.%s%s.", encodedId, prefix, ds.rootDomain)
 		rr := &dns.SRV{
 			Hdr:      header,
 			Priority: 10,
@@ -184,19 +272,25 @@ func (ds *DnsServer) parseRequest(name string, qtype uint16) (*DnsRequest, error
 	}
 	parts := strings.Split(req.subdomain, ".")
 
+	log.Debugf("Dispatching request for sub-domain %v", req.subdomain)
+
 	// If they're attempting to pool for the IP address of the
 	// authoritative name server (us), then we'll return a slimmed down
 	// request to indicate this.
-	if req.subdomain == "soa." {
+	if strings.HasPrefix(req.subdomain, "soa") {
 		return &DnsRequest{
 			subdomain: req.subdomain,
 		}, nil
 	}
 
 	for _, cond := range parts {
-		if len(cond) == 0 {
+		// We'll skip any empty conditionals, as well as any of the
+		// chain-specific sub-domains that this DNS server currently
+		// uses.
+		if len(cond) == 0 || cond == "ltc" || cond == "test" {
 			continue
 		}
+
 		k, v := cond[0], cond[1:]
 
 		if k == 'r' {
@@ -250,7 +344,7 @@ func (ds *DnsServer) handleLightningDns(w dns.ResponseWriter, r *dns.Msg) {
 	// If they're requesting our SOA shim, then we'll directly return the
 	// IP address of the authoritative DNS server for fallback TCP
 	// purposes.
-	case req.subdomain == "soa.":
+	case strings.HasPrefix(req.subdomain, "soa"):
 		soaResp := &dns.A{
 			Hdr: dns.RR_Header{
 				Rrtype: dns.TypeA,
@@ -268,21 +362,27 @@ func (ds *DnsServer) handleLightningDns(w dns.ResponseWriter, r *dns.Msg) {
 	case req.node_id == "":
 		switch req.qtype {
 		case dns.TypeAAAA:
-			ds.handleAAAAQuery(r, m)
+			ds.handleAAAAQuery(r, m, req.subdomain)
 			break
 		case dns.TypeA:
 			log.Debugf("Wildcard query")
-			ds.handleAQuery(r, m)
+			ds.handleAQuery(r, m, req.subdomain)
 			break
 		case dns.TypeSRV:
-			ds.handleSRVQuery(r, m)
+			ds.handleSRVQuery(r, m, req.subdomain)
 		}
 
 	// If they're targeting a specific sub-domain (which targets a node on
 	// the network), then we'll attempt to return a reachable IP address
 	// for the target node.
 	default:
-		n, ok := ds.netview.reachableNodes[req.node_id]
+		chainView := ds.locateChainView(req.subdomain)
+		if chainView == nil {
+			log.Errorf("node query: no chain view found for %v", req.subdomain)
+			break
+		}
+
+		n, ok := chainView.NetView.reachableNodes[req.node_id]
 		if !ok {
 			log.Debugf("Unable to find node with ID %s", req.node_id)
 		}
