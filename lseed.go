@@ -51,6 +51,8 @@ var (
 
 var (
 	lndHomeDir = btcutil.AppDataDir("lnd", false)
+
+	maxMsgRecvSize = grpc.MaxCallRecvMsgSize(1 * 1024 * 1024 * 50)
 )
 
 // cleanAndExpandPath expands environment variables and leading ~ in the passed
@@ -96,6 +98,7 @@ func initLightningClient(nodeHost, tlsCertPath, macPath string) (lnrpc.Lightning
 		opts,
 		grpc.WithPerRPCCredentials(macaroons.NewMacaroonCredential(mac)),
 	)
+	opts = append(opts, grpc.WithDefaultCallOptions(maxMsgRecvSize))
 
 	conn, err := grpc.Dial(nodeHost, opts...)
 	if err != nil {
