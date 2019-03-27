@@ -17,9 +17,9 @@ import (
 	macaroon "gopkg.in/macaroon.v2"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/btcsuite/btcutil"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/macaroons"
-	"github.com/roasbeef/btcutil"
 	"github.com/roasbeef/lseed/seed"
 )
 

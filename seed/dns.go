@@ -18,9 +18,9 @@ import (
 	"syscall"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcutil/bech32"
 	"github.com/miekg/dns"
-	"github.com/roasbeef/btcd/btcec"
-	"github.com/roasbeef/btcutil/bech32"
 )
 
 type DnsServer struct {
@@ -90,8 +90,6 @@ func (ds *DnsServer) locateChainView(subdomain string) *ChainView {
 
 	subdomain = strings.TrimSpace(subdomain)
 	segments := strings.SplitAfter(subdomain, ".")
-	log.Debug("seg: ", segments)
-	log.Debug("seg: ", len(segments))
 
 	switch {
 
@@ -100,8 +98,6 @@ func (ds *DnsServer) locateChainView(subdomain string) *ChainView {
 	// in order to fetch the proper chain view.
 	case len(segments) == 3:
 		chain := segments[1]
-		log.Debug("chain: ", chain)
-		log.Debug("chain: ", chain == "test.")
 
 		return ds.chainViews[chain]
 
@@ -123,7 +119,6 @@ func (ds *DnsServer) handleAAAAQuery(request *dns.Msg, response *dns.Msg,
 
 	chainView, ok := ds.chainViews[subDomain]
 	if !ok {
-		log.Errorf("no chain view found for %v", subDomain)
 		return
 	}
 
@@ -157,7 +152,6 @@ func (ds *DnsServer) handleAQuery(request *dns.Msg, response *dns.Msg,
 func (ds *DnsServer) handleSRVQuery(request *dns.Msg, response *dns.Msg,
 	subDomain string) {
 
-	log.Debugf("taget subdomain: ", subDomain)
 
 	var (
 		chainView *ChainView
