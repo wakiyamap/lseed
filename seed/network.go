@@ -20,6 +20,10 @@ const (
 	// queries only return nodes that listen to this port, SRV queries can
 	// actually specify a port, so they return all nodes.
 	defaultPort = 9735
+
+	// dialTimeoutDurationis the default duration that we'll wait until we
+	// determine that we can't reach an address from dialing.
+	dialTimeoutDuration = time.Second * 5
 )
 
 // A bitfield in which bit 0 indicates whether it is an IPv6 if set,
@@ -174,7 +178,9 @@ func (nv *NetworkView) reachabilityPruner() {
 			log.Infof("Checking Node(%v) (%v) for reachability @ %v",
 				n.Id, nv.chain, addr.String())
 
-			tcpConn, err := net.Dial("tcp", addr.String())
+			tcpConn, err := net.DialTimeout(
+				"tcp", addr.String(), dialTimeoutDuration,
+			)
 			if err != nil {
 				log.Infof("Unable to reach %v via %v: %v", n.Id,
 					addr, err)
