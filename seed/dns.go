@@ -90,8 +90,6 @@ func (ds *DnsServer) locateChainView(subdomain string) *ChainView {
 
 	subdomain = strings.TrimSpace(subdomain)
 	segments := strings.SplitAfter(subdomain, ".")
-	log.Debug("seg: ", segments)
-	log.Debug("seg: ", len(segments))
 
 	switch {
 
@@ -100,8 +98,6 @@ func (ds *DnsServer) locateChainView(subdomain string) *ChainView {
 	// in order to fetch the proper chain view.
 	case len(segments) == 3:
 		chain := segments[1]
-		log.Debug("chain: ", chain)
-		log.Debug("chain: ", chain == "test.")
 
 		return ds.chainViews[chain]
 
@@ -123,7 +119,6 @@ func (ds *DnsServer) handleAAAAQuery(request *dns.Msg, response *dns.Msg,
 
 	chainView, ok := ds.chainViews[subDomain]
 	if !ok {
-		log.Errorf("no chain view found for %v", subDomain)
 		return
 	}
 
@@ -156,8 +151,6 @@ func (ds *DnsServer) handleAQuery(request *dns.Msg, response *dns.Msg,
 // client figure it out.
 func (ds *DnsServer) handleSRVQuery(request *dns.Msg, response *dns.Msg,
 	subDomain string) {
-
-	log.Debugf("taget subdomain: ", subDomain)
 
 	var (
 		chainView *ChainView

@@ -19,8 +19,8 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/wakiyamap/lnd/lnrpc"
 	"github.com/wakiyamap/lnd/macaroons"
-	"github.com/wakiyamap/monautil"
 	"github.com/wakiyamap/lseed/seed"
+	"github.com/wakiyamap/monautil"
 )
 
 var (
@@ -42,7 +42,7 @@ var (
 
 	authoritativeIP = flag.String("root-ip", "127.0.0.1", "The IP address of the authoritative name server. This is used to create a dummy record which allows clients to access the seed directly over TCP")
 
-	pollInterval = flag.Int("poll-interval", 180, "Time between polls to lightningd for updates")
+	pollInterval = flag.Int("poll-interval", 600, "Time between polls to lightningd for updates")
 
 	debug = flag.Bool("debug", false, "Be very verbose")
 
@@ -51,6 +51,8 @@ var (
 
 var (
 	lndHomeDir = monautil.AppDataDir("lnd", false)
+
+	maxMsgRecvSize = grpc.MaxCallRecvMsgSize(1 * 1024 * 1024 * 50)
 )
 
 // cleanAndExpandPath expands environment variables and leading ~ in the passed
@@ -93,6 +95,8 @@ func initLightningClient(nodeHost, tlsCertPath, macPath string) (lnrpc.Lightning
 		opts,
 		grpc.WithPerRPCCredentials(macaroons.NewMacaroonCredential(mac)),
 	)
+	opts = append(opts, grpc.WithDefaultCallOptions(maxMsgRecvSize))
+
 	conn, err := grpc.Dial(nodeHost, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to dial to lnd's gRPC server: ",
