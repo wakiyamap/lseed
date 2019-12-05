@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"path/filepath"
 	"strings"
@@ -130,7 +132,6 @@ func poller(lnd lnrpc.LightningClient, nview *seed.NetworkView) {
 			context.Background(), graphReq,
 		)
 		if err != nil {
-			log.Debugf("Unable to query for graph: %v", err)
 			return
 		}
 
@@ -169,6 +170,10 @@ func main() {
 	log.SetOutput(os.Stdout)
 
 	configure()
+
+	go func() {
+		log.Println(http.ListenAndServe(":9091", nil))
+	}()
 
 	netViewMap := make(map[string]*seed.ChainView)
 
