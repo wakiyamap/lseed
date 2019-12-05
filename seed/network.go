@@ -259,6 +259,11 @@ func (nv *NetworkView) reachabilityPruner() {
 		nv.Unlock()
 	}
 
+	numFds := 100
+	searchSema := make(chan struct{}, 100)
+	for i := 0; i < numFds; i++ {
+		searchSema <- struct{}{}
+	}
 	for {
 		select {
 		// A new node has just been discovered, if we haven't checked
@@ -266,6 +271,15 @@ func (nv *NetworkView) reachabilityPruner() {
 		// addresses are reachable.
 		case newNode := <-nv.freshNodes:
 			go func() {
+				log.Infof("waiting to grab sema")
+				<-searchSema
+
+				defer func() {
+					searchSema <- struct{}{}
+					log.Infof("sema returned")
+				}()
+
+				log.Infof("got sema")
 				extractReachableAddrs(newNode, false)
 			}()
 
