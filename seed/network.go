@@ -26,6 +26,8 @@ const (
 	dialTimeoutDuration = time.Second * 5
 )
 
+var privateIPBlocks []*net.IPNet
+
 // A bitfield in which bit 0 indicates whether it is an IPv6 if set,
 // and bit 1 indicates whether it uses the default port if set.
 type NodeType uint8
@@ -75,6 +77,20 @@ func NewNetworkView(chain string) *NetworkView {
 	return n
 }
 
+func isPrivateIP(ip net.IP) bool {
+	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
+		ip.IsUnspecified() {
+		return true
+	}
+
+	for _, block := range privateIPBlocks {
+		if block.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
 // Return a random sample matching the NodeType, or just any node if
 // query is set to `0xFF`. Relies on random map-iteration ordering
 // internally.
@@ -91,6 +107,9 @@ func (nv *NetworkView) RandomSample(query NodeType, count int) []Node {
 			break
 		}
 	}
+
+	fmt.Println("Num reachable nodes: %v", len(nv.reachableNodes))
+
 	return result
 }
 
@@ -295,5 +314,24 @@ func (nv *NetworkView) reachabilityPruner() {
 			seenNodes = make(map[string]struct{})
 			nv.Unlock()
 		}
+	}
+}
+
+func init() {
+	for _, cidr := range []string{
+		"127.0.0.0/8",    // IPv4 loopback
+		"10.0.0.0/8",     // RFC1918
+		"172.16.0.0/12",  // RFC1918
+		"192.168.0.0/16", // RFC1918
+		"169.254.0.0/16", // RFC3927 link-local
+		"::1/128",        // IPv6 loopback
+		"fe80::/10",      // IPv6 link-local
+		"fc00::/7",       // IPv6 unique local addr
+	} {
+		_, block, err := net.ParseCIDR(cidr)
+		if err != nil {
+			panic(fmt.Errorf("parse error on %q: %v", cidr, err))
+		}
+		privateIPBlocks = append(privateIPBlocks, block)
 	}
 }
