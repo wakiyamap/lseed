@@ -12,7 +12,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/wakiyamap/lnd/lnrpc"
+	"github.com/monasuite/lnd/lnrpc"
 )
 
 const (
@@ -25,6 +25,8 @@ const (
 	// determine that we can't reach an address from dialing.
 	dialTimeoutDuration = time.Second * 5
 )
+
+var privateIPBlocks []*net.IPNet
 
 // A bitfield in which bit 0 indicates whether it is an IPv6 if set,
 // and bit 1 indicates whether it uses the default port if set.
@@ -75,6 +77,20 @@ func NewNetworkView(chain string) *NetworkView {
 	return n
 }
 
+func isPrivateIP(ip net.IP) bool {
+	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
+		ip.IsUnspecified() {
+		return true
+	}
+
+	for _, block := range privateIPBlocks {
+		if block.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
 // Return a random sample matching the NodeType, or just any node if
 // query is set to `0xFF`. Relies on random map-iteration ordering
 // internally.
@@ -91,6 +107,9 @@ func (nv *NetworkView) RandomSample(query NodeType, count int) []Node {
 			break
 		}
 	}
+
+	fmt.Println("Num reachable nodes: %v", len(nv.reachableNodes))
+
 	return result
 }
 
@@ -240,6 +259,11 @@ func (nv *NetworkView) reachabilityPruner() {
 		nv.Unlock()
 	}
 
+	numFds := 100
+	searchSema := make(chan struct{}, 100)
+	for i := 0; i < numFds; i++ {
+		searchSema <- struct{}{}
+	}
 	for {
 		select {
 		// A new node has just been discovered, if we haven't checked
@@ -247,6 +271,15 @@ func (nv *NetworkView) reachabilityPruner() {
 		// addresses are reachable.
 		case newNode := <-nv.freshNodes:
 			go func() {
+				log.Infof("waiting to grab sema")
+				<-searchSema
+
+				defer func() {
+					searchSema <- struct{}{}
+					log.Infof("sema returned")
+				}()
+
+				log.Infof("got sema")
 				extractReachableAddrs(newNode, false)
 			}()
 
@@ -295,5 +328,24 @@ func (nv *NetworkView) reachabilityPruner() {
 			seenNodes = make(map[string]struct{})
 			nv.Unlock()
 		}
+	}
+}
+
+func init() {
+	for _, cidr := range []string{
+		"127.0.0.0/8",    // IPv4 loopback
+		"10.0.0.0/8",     // RFC1918
+		"172.16.0.0/12",  // RFC1918
+		"192.168.0.0/16", // RFC1918
+		"169.254.0.0/16", // RFC3927 link-local
+		"::1/128",        // IPv6 loopback
+		"fe80::/10",      // IPv6 link-local
+		"fc00::/7",       // IPv6 unique local addr
+	} {
+		_, block, err := net.ParseCIDR(cidr)
+		if err != nil {
+			panic(fmt.Errorf("parse error on %q: %v", cidr, err))
+		}
+		privateIPBlocks = append(privateIPBlocks, block)
 	}
 }

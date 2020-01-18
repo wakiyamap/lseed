@@ -1,29 +1,18 @@
 module github.com/wakiyamap/lseed
 
 require (
-	github.com/Sirupsen/logrus v0.0.0-20180315010703-90150a8ed11b
-	github.com/aead/skein v0.0.0-20160722084837-9365ae6e95d2
-	github.com/bitgoin/lyra2rev2 v0.0.0-20161212102046-bae9ad2043bb
-	github.com/btcsuite/golangcrypto v0.0.0-20150304025918-53f62d9b43e8
-	github.com/coreos/bbolt v0.0.0-20180318001526-af9db2027c98
-	github.com/dchest/blake256 v1.0.0
-	github.com/golang/protobuf v0.0.0-20180202184318-bbd03ef6da3a
-	github.com/grpc-ecosystem/grpc-gateway v0.0.0-20170724004829-f2862b476edc
-	github.com/juju/loggo v0.0.0-20170605014607-8232ab8918d9
-	github.com/miekg/dns v0.0.0-20180315090945-5b169d1842fb
-	github.com/roasbeef/btcwallet v0.0.0-20180314213439-45445d1b0967
-	github.com/rogpeppe/fastuuid v0.0.0-20150106093220-6724a57986af
-	github.com/wakiyamap/lnd v0.0.0-20180405030458-63004942c89f
-	github.com/wakiyamap/lyra2rev2 v0.0.0-20161212102046-bae9ad2043bb
-	github.com/wakiyamap/monad v0.0.0-20180403135225-334ed97b9973
-	github.com/wakiyamap/monautil v0.0.0-20180403133017-5633c0880c69
-	golang.org/x/crypto v0.0.0-20170930174604-9419663f5a44
-	golang.org/x/net v0.0.0-20180317175401-24dd3780ca4f
-	golang.org/x/sys v0.0.0-20180316202216-2f1e207ee39f
-	golang.org/x/text v0.0.0-20180315130413-8c34f848e18c
-	google.golang.org/genproto v0.0.0-20180316064809-f8c870359523
-	google.golang.org/grpc v1.5.2
-	gopkg.in/errgo.v1 v1.0.0-20161222125816-442357a80af5
-	gopkg.in/macaroon-bakery.v2 v2.0.1
+	github.com/Sirupsen/logrus v1.0.5
+	github.com/davecgh/go-spew v1.1.1
+	github.com/miekg/dns v1.0.7
+	github.com/monasuite/lnd v0.8.1-beta
+	github.com/monasuite/monad v0.20.1-beta
+	github.com/monasuite/monautil v0.0.0-20190606162653-90b266792864
+	github.com/sirupsen/logrus v1.4.0 // indirect
+	github.com/stretchr/testify v1.3.0 // indirect
+	google.golang.org/grpc v1.24.0
+	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
+	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
 	gopkg.in/macaroon.v2 v2.0.0
 )
+
+go 1.13

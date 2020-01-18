@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,10 +19,10 @@ import (
 	macaroon "gopkg.in/macaroon.v2"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/wakiyamap/lnd/lnrpc"
-	"github.com/wakiyamap/lnd/macaroons"
+	"github.com/monasuite/lnd/lnrpc"
+	"github.com/monasuite/lnd/macaroons"
+	"github.com/monasuite/monautil"
 	"github.com/wakiyamap/lseed/seed"
-	"github.com/wakiyamap/monautil"
 )
 
 var (
@@ -126,7 +128,6 @@ func poller(lnd lnrpc.LightningClient, nview *seed.NetworkView) {
 			context.Background(), graphReq,
 		)
 		if err != nil {
-			log.Debugf("Unable to query for graph: %v", err)
 			return
 		}
 
@@ -165,6 +166,10 @@ func main() {
 	log.SetOutput(os.Stdout)
 
 	configure()
+
+	go func() {
+		log.Println(http.ListenAndServe(":9091", nil))
+	}()
 
 	netViewMap := make(map[string]*seed.ChainView)
 
@@ -210,7 +215,7 @@ func main() {
 
 	}
 	if *testNodeHost != "" && *testTLSPath != "" && *testMacPath != "" {
-		log.Infof("Creating BTC testnet chain view")
+		log.Infof("Creating MONA testnet chain view")
 
 		lndNode, err := initLightningClient(
 			*testNodeHost, *testTLSPath, *testMacPath,
@@ -222,7 +227,7 @@ func main() {
 		nView := seed.NewNetworkView("testnet")
 		go poller(lndNode, nView)
 
-		log.Infof("TBCT chain view active")
+		log.Infof("TMONA chain view active")
 
 		netViewMap["test."] = &seed.ChainView{
 			NetView: nView,

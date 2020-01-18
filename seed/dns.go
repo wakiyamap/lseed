@@ -19,8 +19,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/miekg/dns"
-	"github.com/wakiyamap/monad/btcec"
-	"github.com/wakiyamap/monautil/bech32"
+	"github.com/monasuite/monad/btcec"
+	"github.com/monasuite/monautil/bech32"
 )
 
 type DnsServer struct {
@@ -50,6 +50,9 @@ func addAResponse(n Node, name string, responses *[]dns.RR) {
 	}
 
 	for _, a := range n.Addresses {
+		if isPrivateIP(a.IP) {
+			continue
+		}
 
 		if a.IP.To4() == nil {
 			continue
@@ -72,6 +75,9 @@ func addAAAAResponse(n Node, name string, responses *[]dns.RR) {
 		Name:   name,
 	}
 	for _, a := range n.Addresses {
+		if isPrivateIP(a.IP) {
+			continue
+		}
 
 		if a.IP.To4() != nil {
 			continue
@@ -86,10 +92,12 @@ func addAAAAResponse(n Node, name string, responses *[]dns.RR) {
 }
 
 func (ds *DnsServer) locateChainView(subdomain string) *ChainView {
-	fmt.Println("locate subdom")
+	//fmt.Println("locate subdom")
 
 	subdomain = strings.TrimSpace(subdomain)
 	segments := strings.SplitAfter(subdomain, ".")
+	//	log.Debug("seg: ", segments)
+	//log.Debug("seg: ", len(segments))
 
 	switch {
 
@@ -119,6 +127,7 @@ func (ds *DnsServer) handleAAAAQuery(request *dns.Msg, response *dns.Msg,
 
 	chainView, ok := ds.chainViews[subDomain]
 	if !ok {
+		//log.Errorf("no chain view found for %v", subDomain)
 		return
 	}
 
@@ -133,7 +142,7 @@ func (ds *DnsServer) handleAQuery(request *dns.Msg, response *dns.Msg,
 
 	chainView, ok := ds.chainViews[subDomain]
 	if !ok {
-		log.Errorf("no chain view found for %v", subDomain)
+		//log.Errorf("no chain view found for %v", subDomain)
 		return
 	}
 
@@ -151,6 +160,8 @@ func (ds *DnsServer) handleAQuery(request *dns.Msg, response *dns.Msg,
 // client figure it out.
 func (ds *DnsServer) handleSRVQuery(request *dns.Msg, response *dns.Msg,
 	subDomain string) {
+
+	//log.Debugf("taget subdomain: ", subDomain)
 
 	var (
 		chainView *ChainView
@@ -321,7 +332,7 @@ func (ds *DnsServer) handleLightningDns(w dns.ResponseWriter, r *dns.Msg) {
 	req, err := ds.parseRequest(r.Question[0].Name, r.Question[0].Qtype)
 
 	if err != nil {
-		log.Errorf("error parsing request: %v", err)
+		//log.Errorf("error parsing request: %v", err)
 		return
 	}
 
@@ -358,7 +369,6 @@ func (ds *DnsServer) handleLightningDns(w dns.ResponseWriter, r *dns.Msg) {
 			ds.handleAAAAQuery(r, m, req.subdomain)
 			break
 		case dns.TypeA:
-			log.Debugf("Wildcard query")
 			ds.handleAQuery(r, m, req.subdomain)
 			break
 		case dns.TypeSRV:
